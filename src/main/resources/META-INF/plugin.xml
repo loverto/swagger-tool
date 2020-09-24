@@ -8,7 +8,7 @@
       IntelliJ Generate Annotation plugin.<br>
       <a href="https://github.com/Pwhxbdk/swagger-tool">GitHub</a><br>
       根据类属性/方法的doc注释生成swagger注解。<br>
-      使用说明请前往github查看...<br>
+      使用说明:使用快捷键Alt+Insert 或者，在类空白处点右键，generater->SwaggerAnnotation，选中方法然后点右键，generater->SwaggerAnnotation <br>
       Generate swagger annotations based on doc comments of class field / methods.<br>
       For instructions, please go to github...
       <hr>
@@ -41,15 +41,6 @@
         </code>
       </pre>
     ]]></description>
-
-  <change-notes><![CDATA[
-      优化注解写入效率
-      Optimize annotation writing efficiency
-
-      更新了@ApiOperation.httpMethod显示问题。
-      Updated @ApiOperation.httpMethod display issue.
-    ]]>
-  </change-notes>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
   <idea-version since-build="145.0"/>

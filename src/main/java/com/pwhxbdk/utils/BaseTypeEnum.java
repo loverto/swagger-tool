@@ -23,7 +23,13 @@ public enum BaseTypeEnum {
 
     ;
 
+    /**
+     * 基础类的名称
+     */
     private String name;
+    /**
+     * 包装类的名称
+     */
     private String boxedTypeName;
 
     BaseTypeEnum(String name, String boxedTypeName) {
@@ -47,6 +53,11 @@ public enum BaseTypeEnum {
         this.boxedTypeName = boxedTypeName;
     }
 
+    /**
+     * 根据包装类名称获取基本数据类型
+     * @param boxedTypeName 包装类名
+     * @return 基础数据类名
+     */
     public static String findByName(String boxedTypeName) {
         for (BaseTypeEnum type : values()) {
             if (Objects.equals(type.getBoxedTypeName(), boxedTypeName)) {

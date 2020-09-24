@@ -14,11 +14,19 @@ import java.util.stream.Collectors;
 public class CommentUtils {
 
 
+    /**
+     * 获取数据类型
+     * @param dataType 数据类型
+     * @param psiType
+     * @return
+     */
     public static String getDataType(String dataType, PsiType psiType) {
+        // 根据包装类型获取基本数据类型
         String typeName = BaseTypeEnum.findByName(dataType);
         if (StringUtils.isNotEmpty(typeName)) {
             return typeName;
         }
+        // 数据类型本身就是基本数据类型
         if (BaseTypeEnum.isName(dataType)) {
             return dataType;
         }
@@ -60,13 +68,17 @@ public class CommentUtils {
                     && !StringUtils.startsWithIgnoreCase(row,"*@description")) {
                 appendComment(string, stringBuilder, 5);
             }
-            if (StringUtils.startsWithIgnoreCase(row,"*@description")) {
-                appendComment(string, stringBuilder, 12);
+            if (StringUtils.startsWithIgnoreCase(row,"*@description:")) {
+                appendComment(string, stringBuilder, 13);
+
+            }if (StringUtils.startsWithIgnoreCase(row,"*方法实现说明：")) {
+                appendComment(string, stringBuilder, 9);
             }
+
             if (StringUtils.startsWithIgnoreCase(row,"*@describe")) {
                 appendComment(string, stringBuilder, 9);
             }
-            if (StringUtils.startsWith(row,"*@") || StringUtils.startsWith(row,"*/")) {
+            if (StringUtils.startsWith(row,"*@")||StringUtils.startsWith(row,"*方法实现说明：") || StringUtils.startsWith(row,"*/")|| StringUtils.startsWith(row,"**/")) {
                 continue;
             }
             int descIndex = StringUtils.ordinalIndexOf(string,"*",1);
@@ -81,27 +93,23 @@ public class CommentUtils {
     }
 
 
+    /**
+     * 追加注释
+     * @param string
+     * @param stringBuilder
+     * @param index
+     */
     private static void appendComment(String string, StringBuilder stringBuilder, int index) {
         String lowerCaseStr = string.toLowerCase();
         int descIndex = StringUtils.ordinalIndexOf(lowerCaseStr,"@",1);
+        if (descIndex == -1){
+            descIndex = StringUtils.ordinalIndexOf(lowerCaseStr,"* ",1);
+        }
         descIndex += index;
         String desc = string.substring(descIndex);
         stringBuilder.append(desc);
     }
 
-    /**
-     * dfdfdf
-     * @param args
-     */
-    public static void main(String[] args) {
-
-//        System.out.println(getCommentDesc("/**\n" +
-//                " * @describe pwhxbdk\n" +
-//                " * @author pwhxbdk\n" +
-//                " * @date 2020/4/6\n" +
-//                " */"));
-//        System.out.println(StringUtils.ordinalIndexOf("*@desc fdfdfdfdf","c",1));
-    }
 
 
 }

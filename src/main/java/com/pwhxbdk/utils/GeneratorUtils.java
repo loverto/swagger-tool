@@ -3,6 +3,7 @@ package com.pwhxbdk.utils;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
+import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.PsiShortNamesCache;
 import org.apache.commons.lang.StringUtils;
@@ -36,6 +37,13 @@ public class GeneratorUtils {
     private final PsiElementFactory elementFactory;
     private final String selectionText;
 
+    /**
+     * 生成注解工具类
+     * @param project 项目名称
+     * @param psiFile 类文件
+     * @param elementFactory
+     * @param selectionText 选中文本
+     */
     public GeneratorUtils(Project project, PsiFile psiFile, PsiElementFactory elementFactory, String selectionText) {
         this.project = project;
         this.psiFile = psiFile;
@@ -51,6 +59,7 @@ public class GeneratorUtils {
             }
             // 遍历当前对象的所有属性
             for (PsiElement psiElement : psiFile.getChildren()) {
+                // 判断是类
                 if (psiElement instanceof PsiClass){
                     PsiClass psiClass = (PsiClass) psiElement;
                     boolean isController = this.isController(psiClass);
@@ -248,6 +257,20 @@ public class GeneratorUtils {
         PsiAnnotation apiOperationExist = psiMethod.getModifierList().findAnnotation("io.swagger.annotations.ApiOperation");
         String apiOperationAttrValue = this.getAttribute(apiOperationExist,"value");
         String apiOperationAttrNotes = this.getAttribute(apiOperationExist,"notes");
+        PsiDocComment docComment = psiMethod.getDocComment();
+        if (null != docComment){
+            String text = docComment.getText();
+            if (StringUtils.isNotBlank(text)){
+                String commentDesc = CommentUtils.getCommentDesc(text);
+                if (StringUtils.equals(apiOperationAttrNotes,"\"\"")){
+                    apiOperationAttrNotes = "\""+commentDesc+"\"";
+                }
+                if (StringUtils.equals(apiOperationAttrValue,"\"\"")){
+                    apiOperationAttrValue = "\""+commentDesc+"\"";
+                }
+            }
+        }
+
         String apiOperationAnnotationText = String.format("@ApiOperation(value = %s, notes = %s,httpMethod = \"%s\")", apiOperationAttrValue, apiOperationAttrNotes, methodValue);
         String apiImplicitParamsAnnotationText = null;
         PsiParameter[] psiParameters = psiMethod.getParameterList().getParameters();
@@ -293,7 +316,9 @@ public class GeneratorUtils {
         }
 
         this.doWrite("ApiOperation", "io.swagger.annotations.ApiOperation", apiOperationAnnotationText, psiMethod);
-        this.doWrite("ApiImplicitParams", "io.swagger.annotations.ApiImplicitParams", apiImplicitParamsAnnotationText,psiMethod);
+        if (StringUtils.isNotBlank(apiImplicitParamsAnnotationText)){
+            this.doWrite("ApiImplicitParams", "io.swagger.annotations.ApiImplicitParams", apiImplicitParamsAnnotationText,psiMethod);
+        }
         WriteCommandAction.runWriteCommandAction(project, () -> addImport(elementFactory, psiFile, "ApiImplicitParam"));
     }
 
