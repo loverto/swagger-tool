@@ -9,9 +9,12 @@ import com.intellij.psi.search.PsiShortNamesCache;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static com.pwhxbdk.utils.Constant.*;
 
 /**
  * @Author: pwhxbdk
@@ -19,22 +22,16 @@ import java.util.stream.Collectors;
  */
 public class GeneratorUtils {
 
-    private static final String MAPPING_VALUE = "value";
-    private static final String MAPPING_METHOD = "method";
-    private static final String REQUEST_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.RequestMapping";
-    private static final String POST_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.PostMapping";
-    private static final String GET_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.GetMapping";
-    private static final String DELETE_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.DeleteMapping";
-    private static final String PATCH_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.PatchMapping";
-    private static final String PUT_MAPPING_ANNOTATION = "org.springframework.web.bind.annotation.PutMapping";
-    private static final String REQUEST_PARAM_TEXT = "org.springframework.web.bind.annotation.RequestParam";
-    private static final String REQUEST_HEADER_TEXT = "org.springframework.web.bind.annotation.RequestHeader";
-    private static final String PATH_VARIABLE_TEXT = "org.springframework.web.bind.annotation.PathVariable";
-    private static final String REQUEST_BODY_TEXT = "org.springframework.web.bind.annotation.RequestBody";
+
 
     private final Project project;
     private final PsiFile psiFile;
     private final PsiElementFactory elementFactory;
+    /**
+     * 选中文本
+     * 选中文本的作用：
+     * 用来标识操作单个方法
+     */
     private final String selectionText;
 
     /**
@@ -63,12 +60,14 @@ public class GeneratorUtils {
                 if (psiElement instanceof PsiClass){
                     PsiClass psiClass = (PsiClass) psiElement;
                     boolean isController = this.isController(psiClass);
+                    // 执行选中部分
                     if (selection) {
                         this.generateSelection(psiClass, selectionText, isController);
                         break;
                     }
                     // 获取注释
                     this.generateClassAnnotation(psiClass,isController);
+                    // 是Controller的话需要给方法也生成对应的注解
                     if (isController) {
                         // 类方法列表
                         PsiMethod[] methods = psiClass.getMethods();
@@ -110,13 +109,17 @@ public class GeneratorUtils {
 
     /**
      * 类是否为controller
+     * 为选中的部分生成注解
      * @param psiClass 类元素
-     * @return boolean
+     * @param selectionText 选中元素
+     * @param isController 是否是Controller类
      */
     private void generateSelection(PsiClass psiClass, String selectionText, boolean isController) {
+        // 选中的部分是类名
         if (Objects.equals(selectionText, psiClass.getName())) {
             this.generateClassAnnotation(psiClass,isController);
         }
+        // 生成方法对应的注解
         PsiMethod[] methods = psiClass.getMethods();
         for (PsiMethod psiMethod : methods) {
             if (Objects.equals(selectionText, psiMethod.getName())) {
@@ -124,6 +127,7 @@ public class GeneratorUtils {
                 return;
             }
         }
+        // 生成属性对应的注解
         PsiField[] field = psiClass.getAllFields();
         for (PsiField psiField : field) {
             if (Objects.equals(selectionText, psiField.getNameIdentifier().getText())) {
@@ -141,10 +145,8 @@ public class GeneratorUtils {
     private boolean isController(PsiClass psiClass) {
         PsiAnnotation[] psiAnnotations = psiClass.getModifierList().getAnnotations();
         for (PsiAnnotation psiAnnotation : psiAnnotations) {
-            String controllerAnnotation = "org.springframework.stereotype.Controller";
-            String restControllerAnnotation = "org.springframework.web.bind.annotation.RestController";
-            if (controllerAnnotation.equals(psiAnnotation.getQualifiedName())
-                    || restControllerAnnotation.equals(psiAnnotation.getQualifiedName())) {
+            if (CONTROLLER_ANNOTATION.equals(psiAnnotation.getQualifiedName())
+                    || REST_CONTROLLER_ANNOTATION.equals(psiAnnotation.getQualifiedName())) {
                 // controller
                 return true;
             }
@@ -202,45 +204,40 @@ public class GeneratorUtils {
      * @param isController 是否为controller
      */
     private void generateClassAnnotation(PsiClass psiClass, boolean isController){
-        PsiComment classComment = null;
-        for (PsiElement tmpEle : psiClass.getChildren()) {
-            if (tmpEle instanceof PsiComment){
-                classComment = (PsiComment) tmpEle;
-                // 注释的内容
-                String tmpText = classComment.getText();
-                String commentDesc = CommentUtils.getCommentDesc(tmpText);
-                String annotationFromText;
-                String annotation;
-                String qualifiedName;
-                if (isController) {
-                    annotation = "Api";
-                    qualifiedName = "io.swagger.annotations.Api";
-                    String fieldValue = this.getMappingAttribute(psiClass.getModifierList().getAnnotations(),MAPPING_VALUE);
-                    annotationFromText = String.format("@%s(value = %s, tags = {\"%s\"})",annotation,fieldValue,commentDesc);
-                } else {
-                    annotation = "ApiModel";
-                    qualifiedName = "io.swagger.annotations.ApiModel";
-                    annotationFromText = String.format("@%s(value = \"%s\")", annotation, commentDesc);
-                }
-                this.doWrite(annotation, qualifiedName, annotationFromText, psiClass);
-            }
+        // 获取注解
+        PsiDocComment docComment = psiClass.getDocComment();
+        String annotationFromText;
+        String annotation;
+        String qualifiedName;
+        String fieldValue = "";
+        // 处理普通类和MVC类的区别
+        if (isController) {
+            annotation = SWAGGER_ANNOTATIONS_NAME_API;
+            qualifiedName = SWAGGER_ANNOTATIONS_API;
+            fieldValue = this.getMappingAttribute(psiClass.getModifierList().getAnnotations(),MAPPING_VALUE);
+        } else {
+            annotation = SWAGGER_ANNOTATIONS_NAME_API_MODEL;
+            qualifiedName = SWAGGER_ANNOTATIONS_API_MODEL;
         }
-        if (Objects.isNull(classComment)) {
-            String annotationFromText;
-            String annotation;
-            String qualifiedName;
+        // 处理有无注释的
+        if (Objects.isNull(docComment)){
             if (isController) {
-                annotation = "Api";
-                qualifiedName = "io.swagger.annotations.Api";
-                String fieldValue = this.getMappingAttribute(psiClass.getModifierList().getAnnotations(),MAPPING_VALUE);
                 annotationFromText = String.format("@%s(value = %s)",annotation,fieldValue);
             } else {
-                annotation = "ApiModel";
-                qualifiedName = "io.swagger.annotations.ApiModel";
                 annotationFromText = String.format("@%s", annotation);
             }
-            this.doWrite(annotation, qualifiedName, annotationFromText, psiClass);
+        }else {
+            // 注释的内容
+            String tmpText = docComment.getText();
+            String commentDesc = CommentUtils.getCommentDesc(tmpText);
+            if (isController) {
+                annotationFromText = String.format("@%s(value = %s, tags = {\"%s\"})",annotation,fieldValue,commentDesc);
+            } else {
+                annotationFromText = String.format("@%s(value = \"%s\")", annotation, commentDesc);
+            }
         }
+
+        this.doWrite(annotation, qualifiedName, annotationFromText, psiClass);
     }
 
     /**
@@ -254,9 +251,14 @@ public class GeneratorUtils {
             methodValue = methodValue.substring(methodValue.indexOf(".")+1);
         }
         // 如果存在注解，获取注解原本的value和notes内容
-        PsiAnnotation apiOperationExist = psiMethod.getModifierList().findAnnotation("io.swagger.annotations.ApiOperation");
-        String apiOperationAttrValue = this.getAttribute(apiOperationExist,"value");
-        String apiOperationAttrNotes = this.getAttribute(apiOperationExist,"notes");
+        PsiAnnotation apiOperationExist = psiMethod.getModifierList().findAnnotation(SWAGGER_ANNOTATIONS_API_OPERATION);
+        String apiOperationAttrValue = "";
+        String apiOperationAttrNotes = "";
+        if (!Objects.isNull(apiOperationExist)){
+            apiOperationAttrValue = this.getAttribute(apiOperationExist,"value");
+            apiOperationAttrNotes = this.getAttribute(apiOperationExist,"notes");
+        }
+
         PsiDocComment docComment = psiMethod.getDocComment();
         if (null != docComment){
             String text = docComment.getText();
@@ -271,12 +273,26 @@ public class GeneratorUtils {
             }
         }
 
-        String apiOperationAnnotationText = String.format("@ApiOperation(value = %s, notes = %s,httpMethod = \"%s\")", apiOperationAttrValue, apiOperationAttrNotes, methodValue);
+        String apiOperationAnnotationText = String.format("@%s(value = %s, notes = %s,httpMethod = \"%s\")", SWAGGER_ANNOTATIONS_NAME_API_OPERATION,apiOperationAttrValue, apiOperationAttrNotes, methodValue);
+        geneerateMethodParamsAnnotation(psiMethod);
+        this.doWrite(SWAGGER_ANNOTATIONS_NAME_API_OPERATION, SWAGGER_ANNOTATIONS_API_OPERATION, apiOperationAnnotationText, psiMethod);
+
+    }
+
+    /**
+     * 生成方法参数对应的注解
+     * @param psiMethod
+     */
+    private void geneerateMethodParamsAnnotation(PsiMethod psiMethod) {
         String apiImplicitParamsAnnotationText = null;
+        // 获取参数列表
         PsiParameter[] psiParameters = psiMethod.getParameterList().getParameters();
+        // 创建参数列表对应的集合
         List<String> apiImplicitParamList = new ArrayList<>(psiParameters.length);
         for (PsiParameter psiParameter : psiParameters) {
+            // 获取数据类型
             PsiType psiType = psiParameter.getType();
+            // 获取源数据类型
             String dataType = CommentUtils.getDataType(psiType.getCanonicalText(), psiType);
             if (StringUtils.isEmpty(dataType)) {
                 continue;
@@ -308,18 +324,16 @@ public class GeneratorUtils {
                 }
             }
             String apiImplicitParamText =
-                    String.format("@ApiImplicitParam(paramType = \"%s\", dataType = \"%s\", name = \"%s\", value = \"\")",paramType,dataType,psiParameter.getNameIdentifier().getText());
+                    String.format("@%s(paramType = \"%s\", dataType = \"%s\", name = \"%s\", value = \"\")",SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAM,paramType,dataType,psiParameter.getNameIdentifier().getText());
             apiImplicitParamList.add(apiImplicitParamText);
         }
         if (apiImplicitParamList.size() != 0) {
             apiImplicitParamsAnnotationText = apiImplicitParamList.stream().collect(Collectors.joining(",\n", "@ApiImplicitParams({\n", "\n})"));
         }
-
-        this.doWrite("ApiOperation", "io.swagger.annotations.ApiOperation", apiOperationAnnotationText, psiMethod);
         if (StringUtils.isNotBlank(apiImplicitParamsAnnotationText)){
-            this.doWrite("ApiImplicitParams", "io.swagger.annotations.ApiImplicitParams", apiImplicitParamsAnnotationText,psiMethod);
+            this.doWrite(SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAMS, SWAGGER_ANNOTATIONS_API_IMPLICIT_PARAMS, apiImplicitParamsAnnotationText, psiMethod);
         }
-        WriteCommandAction.runWriteCommandAction(project, () -> addImport(elementFactory, psiFile, "ApiImplicitParam"));
+        WriteCommandAction.runWriteCommandAction(project, () -> addImport(elementFactory, psiFile, SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAMS));
     }
 
     /**
@@ -334,12 +348,12 @@ public class GeneratorUtils {
                 // 注释的内容
                 String tmpText = classComment.getText();
                 String commentDesc = CommentUtils.getCommentDesc(tmpText);
-                String apiModelPropertyText = String.format("@ApiModelProperty(value=\"%s\")",commentDesc);
-                this.doWrite("ApiModelProperty", "io.swagger.annotations.ApiModelProperty", apiModelPropertyText, psiField);
+                String apiModelPropertyText = String.format("@%s(value=\"%s\")",SWAGGER_ANNOTATIONS_NAME_API_MODEL_PROPERTY,commentDesc);
+                this.doWrite(SWAGGER_ANNOTATIONS_NAME_API_MODEL_PROPERTY, SWAGGER_ANNOTATIONS_API_MODEL_PROPERTY, apiModelPropertyText, psiField);
             }
         }
         if (Objects.isNull(classComment)) {
-            this.doWrite("ApiModelProperty", "io.swagger.annotations.ApiModelProperty", "@ApiModelProperty(\"\")", psiField);
+            this.doWrite(SWAGGER_ANNOTATIONS_NAME_API_MODEL_PROPERTY, SWAGGER_ANNOTATIONS_API_MODEL_PROPERTY, "@ApiModelProperty(\"\")", psiField);
         }
     }
 

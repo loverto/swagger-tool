@@ -25,6 +25,7 @@ intellij {
 
     version "2020.2.1"
     type "IU"
+    plugins = ['java']
 }
 
 patchPluginXml {

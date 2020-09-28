@@ -32,8 +32,9 @@ public class CommentUtils {
         }
         String multipartFileText = "org.springframework.web.multipart.MultipartFile";
         String javaFileText = "java.io.File";
-        if (psiType.getCanonicalText().equals(multipartFileText)
-                || psiType.getCanonicalText().equals(javaFileText)) {
+        String canonicalText = psiType.getCanonicalText();
+        if (canonicalText.equals(multipartFileText)
+                || canonicalText.equals(javaFileText)) {
             return "file";
         }
         // 查找是否实现自File类
@@ -43,7 +44,7 @@ public class CommentUtils {
                 return "file";
             }
         }
-        return null;
+        return canonicalText;
     }
 
 
