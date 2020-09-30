@@ -189,11 +189,11 @@ public class GeneratorUtils {
      */
     private String getAttribute(PsiAnnotation psiAnnotation, String attributeName) {
         if (Objects.isNull(psiAnnotation)) {
-            return "\"\"";
+            return "";
         }
         PsiAnnotationMemberValue psiAnnotationMemberValue = psiAnnotation.findDeclaredAttributeValue(attributeName);
         if (Objects.isNull(psiAnnotationMemberValue)) {
-            return "\"\"";
+            return "";
         }
         return psiAnnotationMemberValue.getText();
     }
@@ -252,11 +252,17 @@ public class GeneratorUtils {
         }
         // 如果存在注解，获取注解原本的value和notes内容
         PsiAnnotation apiOperationExist = psiMethod.getModifierList().findAnnotation(SWAGGER_ANNOTATIONS_API_OPERATION);
-        String apiOperationAttrValue = "";
-        String apiOperationAttrNotes = "";
+        String apiOperationAttrValue = "\"\"";
+        String apiOperationAttrNotes = "\"\"";
         if (!Objects.isNull(apiOperationExist)){
             apiOperationAttrValue = this.getAttribute(apiOperationExist,"value");
             apiOperationAttrNotes = this.getAttribute(apiOperationExist,"notes");
+        }
+        if(StringUtils.isBlank(apiOperationAttrValue)){
+            apiOperationAttrValue = "\"\"";
+        }
+        if (StringUtils.isBlank(apiOperationAttrNotes)){
+            apiOperationAttrNotes = "\"\"";
         }
 
         PsiDocComment docComment = psiMethod.getDocComment();
@@ -334,6 +340,7 @@ public class GeneratorUtils {
             this.doWrite(SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAMS, SWAGGER_ANNOTATIONS_API_IMPLICIT_PARAMS, apiImplicitParamsAnnotationText, psiMethod);
         }
         WriteCommandAction.runWriteCommandAction(project, () -> addImport(elementFactory, psiFile, SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAMS));
+        WriteCommandAction.runWriteCommandAction(project, () -> addImport(elementFactory, psiFile, SWAGGER_ANNOTATIONS_NAME_API_IMPLICIT_PARAM));
     }
 
     /**
